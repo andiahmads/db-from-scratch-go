@@ -52,13 +52,13 @@ func (node BNode) nkeys() uint16 {
 // Menulis header ke byte 0..3.
 // Kapan dipakai?
 // Saat kita membuat node baru, misalnya: leaf dengan 2 key
-internal node dengan 3 key
+// internal node dengan 3 key
 func (node BNode) setHeader(btype uint16, nkeys uint16) {
 	binary.LittleEndian.PutUint16(node.data[0:2], btype)
 	binary.LittleEndian.PutUint16(node.data[2:4], nkeys)
 }
 
-//Mengambil pointer child ke-idx. Kenapa 8 byte? Karena pointer page kita uint64.
+// Mengambil pointer child ke-idx. Kenapa 8 byte? Karena pointer page kita uint64.
 // Rumus posisi:
 // Header 4 byte, lalu pointer list mulai setelah itu.
 // Kalau:
@@ -77,7 +77,8 @@ func (node BNode) setPtr(idx uint16, val uint64) {
 	binary.LittleEndian.PutUint64(node.data[pos:pos+8], val)
 }
 
-//  KV pair panjangnya variabel.
+//	KV pair panjangnya variabel.
+//
 // Contoh:
 // key1 = "a" , value1 = "123"
 // key2 = "kota", value2 = "pekanbaru"
@@ -97,13 +98,13 @@ func (node BNode) getOffset(idx uint16) uint16 {
 	if idx == 0 {
 		return 0
 	}
-	return binary.LittleEndian.Uint16(node.data[offSetPos(node, idx) : offSetPos(node, idx)+2])
+	return binary.LittleEndian.Uint16(node.data[offsetPos(node, idx) : offsetPos(node, idx)+2])
 }
 
 // Menulis offset list.
 // Nanti kapan dipakai?
 // Saat kita append atau copy KV ke node baru.
-func (node BNode) setOffSet(idx uint16, offset uint16) {
+func (node BNode) setOffset(idx uint16, offset uint16) {
 	assert(1 <= idx && idx <= node.nkeys(), "offsetPost: idx out of range")
 	pos := offsetPos(node, idx)
 	binary.LittleEndian.PutUint16(node.data[pos:pos+2], offset)
@@ -136,7 +137,6 @@ func (node BNode) getKey(idx uint16) []byte {
 	return node.data[pos+4 : pos+4+klen]
 }
 
-
 // Mengambil value ke-idx.
 // Kenapa mulai dari pos+4+klen?
 // Karena value berada setelah:
@@ -147,7 +147,7 @@ func (node BNode) getVal(idx uint16) []byte {
 	pos := node.kvPos(idx)
 	klen := binary.LittleEndian.Uint16(node.data[pos : pos+2])
 	vlen := binary.LittleEndian.Uint16(node.data[pos+2 : pos+4])
-	return node.data[pos+4+klen : pos+4+vlen]
+	return node.data[pos+4+klen : pos+4+klen+vlen]
 }
 
 // Menghitung ukuran node yang benar-benar terpakai.
