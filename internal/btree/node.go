@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -163,4 +164,47 @@ func assert(ok bool, msg string) {
 	if !ok {
 		panic(fmt.Sprintf("assert failed: %s", msg))
 	}
+}
+
+// fungsi yang akan menentukan:
+// key baru harus dimasukkan di posisi mana di dalam node
+// Misalnya node berisi key:
+// [a][c][f]
+// kita mau insert "d"-> kita harus tahu: masuk di antara c dan f Jadi hasilnya:
+// [a][c][d][f]
+// nodeLookupLE = Lookup Less or Equal
+// index:   0   1   2
+// keys :  [a] [c] [f]
+// Cari "d"
+// "a" ≤ "d" → ya
+// "c" ≤ "d" → ya
+// "f" ≤ "d" → tidak
+// hasil: index = 1
+func nodeLookupLE(node BNode, key []byte) uint16 {
+	// berapa banyak key dalam node
+	n := node.nkeys()
+
+	var i uint16
+
+	// kita scan dari kiri ke kanan
+	for i = 0; i < n; i++ {
+		// ini ambil key dari byte-level node (yang tadi kita buat)
+		k := node.getKey(i)
+
+		// Hasil:
+		// < 0 → k < key
+		// 0 → k == key
+		// > 0 → k > key
+		cmp := bytes.Compare(k, key)
+
+		if cmp > 0 {
+			break
+		}
+	}
+
+	if i == 0 {
+		return 0
+	}
+
+	return i - 1
 }

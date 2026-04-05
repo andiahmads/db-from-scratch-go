@@ -50,6 +50,8 @@ func TestNodeqOffsetAndKv(t *testing.T) {
 
 	// KV 0: key = "a", val="123"
 	pos0 := node.kvPos(0)
+	// 	key = "a" → panjang = 1
+	// value = "123" → panjang = 3
 	binary.LittleEndian.PutUint16(node.data[pos0:pos0+2], uint16(len("a")))
 	binary.LittleEndian.PutUint16(node.data[pos0+2:pos0+4], uint16(len("123")))
 
@@ -102,5 +104,67 @@ func TestNodeBytesUsed(t *testing.T) {
 	if node.nbytes() != want {
 		t.Fatalf("expected nbytes=%d, got=%d", want, node.nbytes())
 	}
+}
 
+func TestNodeLookUpLE(t *testing.T) {
+	node := NewBNode(BTREE_PAGE_SIZE)
+	node.setHeader(BNODE_LEAF, 3)
+
+	// isi pointer dummy
+	node.setPtr(0, 0)
+	node.setPtr(1, 0)
+	node.setPtr(2, 0)
+
+	// KV :0 = "a"
+	pos := node.kvPos(0)
+	writeKV(node, pos, "a", "1")
+	node.setOffset(1, kvSize("a", "1"))
+
+	// KV :1 = "c"
+	pos = node.kvPos(1)
+	writeKV(node, pos, "c", "1")
+	node.setOffset(2, node.getOffset(1)+kvSize("c", "1"))
+
+	// KV :2 = "f"
+	pos = node.kvPos(2)
+	writeKV(node, pos, "f", "1")
+
+	tests := []struct {
+		key  string
+		want uint16
+	}{
+		{"a", 0},
+		{"b", 0},
+		{"c", 1},
+		{"d", 1},
+		{"f", 2},
+		{"z", 2},
+	}
+
+	for _, tt := range tests {
+		got := nodeLookupLE(node, []byte(tt.key))
+		if got != tt.want {
+			t.Fatalf("key=%s want=%d got=%d", tt.key, tt.want, got)
+		}
+	}
+}
+
+// helper biar test lebiwriteKVh rapi
+// index: 100 101 102 103 104 105 106 107
+// data : [klen][vlen][ a ][ 1 ][ 2 ][ 3 ]
+func writeKV(node BNode, pos uint16, k, v string) {
+	key := []byte(k)
+	val := []byte(v)
+
+	p := int(pos)
+
+	binary.LittleEndian.PutUint16(node.data[p:p+2], uint16(len(key)))
+	binary.LittleEndian.PutUint16(node.data[p+2:p+4], uint16(len(val)))
+
+	copy(node.data[p+4:], key)
+	copy(node.data[p+4+len(key):], val)
+}
+
+func kvSize(k, v string) uint16 {
+	return uint16(4 + len(k) + len(v))
 }
