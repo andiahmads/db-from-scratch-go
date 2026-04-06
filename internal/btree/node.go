@@ -208,3 +208,25 @@ func nodeLookupLE(node BNode, key []byte) uint16 {
 
 	return i - 1
 }
+
+func nodeAppendKV(new BNode, idx uint16, ptr uint64, key []byte, value []byte) {
+	// 1. set pointer
+	new.setPtr(idx, ptr)
+
+	// cari posisi awal KV ke idx
+	pos := int(new.kvPos(idx))
+
+	// tulis key length dan value length
+	binary.LittleEndian.PutUint16(new.data[pos:pos+2], uint16(len(key)))
+	binary.LittleEndian.PutUint16(new.data[pos+2:pos+4], uint16(len(value)))
+
+	// copy key dan value
+	copy(new.data[pos+4:], key)
+	copy(new.data[pos+4+len(key):], value)
+
+	// hitung ukuran KV
+	kvSize := uint16(4 + len(key) + len(value))
+
+	new.setOffset(idx+1, new.getOffset(idx)+kvSize)
+
+}

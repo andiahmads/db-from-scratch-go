@@ -168,3 +168,37 @@ func writeKV(node BNode, pos uint16, k, v string) {
 func kvSize(k, v string) uint16 {
 	return uint16(4 + len(k) + len(v))
 }
+
+func TestNodeAppendKV(t *testing.T) {
+	node := NewBNode(BTREE_PAGE_SIZE)
+	node.setHeader(BNODE_LEAF, 2)
+
+	// pointer dummy
+	node.setPtr(0, 0)
+	node.setPtr(1, 0)
+
+	nodeAppendKV(node, 0, 0, []byte("a"), []byte("123"))
+	nodeAppendKV(node, 1, 0, []byte("bb"), []byte("xyz"))
+
+	if string(node.getKey(0)) != "a" {
+		t.Fatalf("expected key0=a got=%q", string(node.getKey(0)))
+	}
+	if string(node.getVal(0)) != "123" {
+		t.Fatalf("expected val0=123 got=%q", string(node.getVal(0)))
+	}
+	if string(node.getKey(1)) != "bb" {
+		t.Fatalf("expected key1=bb got=%q", string(node.getKey(1)))
+	}
+	if string(node.getVal(1)) != "xyz" {
+		t.Fatalf("expected val1=xyz got=%q", string(node.getVal(1)))
+	}
+
+	if node.getOffset(1) != 8 {
+		t.Fatalf("expected offset1=8 got=%d", node.getOffset(1))
+	}
+
+	wantOffset2 := uint16(8 + 4 + 2 + 3) // KV0 + KV1
+	if node.getOffset(2) != wantOffset2 {
+		t.Fatalf("expected offset2=%d got=%d", wantOffset2, node.getOffset(2))
+	}
+}
