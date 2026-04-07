@@ -230,3 +230,11 @@ func nodeAppendKV(new BNode, idx uint16, ptr uint64, key []byte, value []byte) {
 	new.setOffset(idx+1, new.getOffset(idx)+kvSize)
 
 }
+
+func nodeAppendRange(new BNode, old BNode, dstNew uint16, srcOld uint16, n uint16) {
+	for i := uint16(0); i < n; i++ {
+		idxNew := dstNew + i
+		idxOld := srcOld + i
+		nodeAppendKV(new, idxNew, old.getPtr(idxOld), old.getKey(idxOld), old.getVal(idxOld))
+	}
+}

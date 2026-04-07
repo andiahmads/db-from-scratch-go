@@ -193,6 +193,7 @@ func TestNodeAppendKV(t *testing.T) {
 		t.Fatalf("expected val1=xyz got=%q", string(node.getVal(1)))
 	}
 
+	// klen = 2 byte, vlen = 2 byte, key = 1 byte, val = 3 byte
 	if node.getOffset(1) != 8 {
 		t.Fatalf("expected offset1=8 got=%d", node.getOffset(1))
 	}
@@ -200,5 +201,41 @@ func TestNodeAppendKV(t *testing.T) {
 	wantOffset2 := uint16(8 + 4 + 2 + 3) // KV0 + KV1
 	if node.getOffset(2) != wantOffset2 {
 		t.Fatalf("expected offset2=%d got=%d", wantOffset2, node.getOffset(2))
+	}
+}
+
+func TestNodeAppendRange(t *testing.T) {
+	old := NewBNode(BTREE_PAGE_SIZE)
+	old.setHeader(BNODE_LEAF, 3)
+
+	old.setPtr(0, 0)
+	old.setPtr(1, 0)
+	old.setPtr(2, 0)
+
+	nodeAppendKV(old, 0, 0, []byte("a"), []byte("1"))
+	nodeAppendKV(old, 1, 0, []byte("c"), []byte("2"))
+	nodeAppendKV(old, 2, 0, []byte("f"), []byte("3"))
+
+	new := NewBNode(BTREE_PAGE_SIZE)
+	new.setHeader(BNODE_LEAF, 2)
+
+	new.setPtr(0, 0)
+	new.setPtr(1, 0)
+
+	nodeAppendRange(new, old, 0, 1, 2)
+	if string(new.getKey(0)) != "c" {
+		t.Fatalf("expected key0=c got=%q", string(new.getKey(0)))
+	}
+
+	if string(new.getVal(0)) != "2" {
+		t.Fatalf("expected val0=2 got=%q", string(new.getVal(0)))
+	}
+
+	if string(new.getKey(1)) != "f" {
+		t.Fatalf("expected key1=f got=%q", string(new.getKey(1)))
+	}
+
+	if string(new.getVal(1)) != "3" {
+		t.Fatalf("expected val1=3 got=%q", string(new.getVal(1)))
 	}
 }
