@@ -231,10 +231,92 @@ func nodeAppendKV(new BNode, idx uint16, ptr uint64, key []byte, value []byte) {
 
 }
 
+// nodeAppendRange = salin banyak item
 func nodeAppendRange(new BNode, old BNode, dstNew uint16, srcOld uint16, n uint16) {
 	for i := uint16(0); i < n; i++ {
 		idxNew := dstNew + i
 		idxOld := srcOld + i
 		nodeAppendKV(new, idxNew, old.getPtr(idxOld), old.getKey(idxOld), old.getVal(idxOld))
 	}
+}
+
+func leafInsert(old BNode, idx uint16, key []byte, val []byte) BNode {
+	new := NewBNode(BTREE_PAGE_SIZE)
+
+	// 	Karena hasil insert punya jumlah key = jumlah lama + 1.
+	// 	Misalnya:
+	// lama = 3 key
+	// setelah insert = 4 key
+	new.setHeader(BNODE_LEAF, old.nkeys()+1)
+
+	// copy kiri: [0 .. idx-1]
+	// 	dari node lama (old)
+	// ambil mulai srcOld = 0
+	// sebanyak idx item
+	// taruh ke node baru (new) mulai dstNew = 0
+	// 	Kalau idx = 2, berarti:
+	// copy item 0 dan 1 dari node lama
+	// taruh ke item 0 dan 1 di node baru
+	// Jadi kalau old:
+	// [a] [c] [f]
+	// maka kiri yang di salin
+	// [a] [c]
+	nodeAppendRange(new, old, 0, 0, idx)
+
+	// insert item baru di idx
+	// 	Tulis key/value baru ke posisi idx.
+	// Kalau idx = 2, maka item baru ditaruh di slot ke-2.
+	// Contoh:
+	// key baru "d"
+	// value "X"
+	// Maka node baru sementara jadi: [a] [c] [d] ...
+	nodeAppendKV(new, idx, 0, key, val)
+
+	// copy kanan: [idx .. old.nkeys()-1 ke [idx+1:...]]
+	// dari old
+	// mulai ambil dari srcOld = idx
+	// sebanyak old.nkeys() - idx item
+	// taruh ke new mulai dstNew = idx+1
+	// 	Kenapa srcOld = idx?
+	// Karena item di old mulai dari idx itulah bagian kanan yang belum disalin.
+	// Kenapa dstNew = idx+1?
+	// Karena slot idx di node baru sudah dipakai item baru.
+	// 	old = [a] [c] [f]
+	// insert = [d]
+	// idx = 2
+	nodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx)
+
+	return new
+}
+
+// Penjelasan leafUpdate
+// Misalnya old:
+// [a] [c] [f]
+
+// Lalu kita update "c" jadi value baru "99".
+
+// Maka:
+
+// copy kiri: [a]
+// tulis baru di posisi 1: [c -> 99]
+// copy kanan: [f]
+
+// Hasil:
+// [a] [c] [f]
+// jumlah key tetap 3, hanya value berubah.
+func leafUpdate(old BNode, idx uint16, key, value []byte) BNode {
+	new := NewBNode(BTREE_PAGE_SIZE)
+	new.setHeader(BNODE_LEAF, old.nkeys())
+
+	// copy kiri sebelum idx
+	nodeAppendRange(new, old, 0, 0, idx)
+
+	// tulis item baru menggantikan item lama di idx
+	nodeAppendKV(new, idx, old.getPtr(idx), key, value)
+
+	// copy kanan setelah idx
+	if idx+1 < old.nkeys() {
+		nodeAppendRange(new, old, idx+1, idx+1, old.nkeys()-(idx+1))
+	}
+	return new
 }

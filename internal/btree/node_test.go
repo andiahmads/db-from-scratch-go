@@ -239,3 +239,35 @@ func TestNodeAppendRange(t *testing.T) {
 		t.Fatalf("expected val1=3 got=%q", string(new.getVal(1)))
 	}
 }
+
+func TestLeafInsert(t *testing.T) {
+	old := NewBNode(BTREE_PAGE_SIZE)
+	old.setHeader(BNODE_LEAF, 3)
+
+	old.setPtr(0, 0)
+	old.setPtr(1, 0)
+	old.setPtr(2, 0)
+
+	nodeAppendKV(old, 0, 0, []byte("a"), []byte("1"))
+	nodeAppendKV(old, 1, 0, []byte("c"), []byte("2"))
+	nodeAppendKV(old, 2, 0, []byte("f"), []byte("3"))
+
+	new := leafInsert(old, 2, []byte("d"), []byte("X"))
+	if new.nkeys() != 4 {
+		t.Fatalf("expected nkeys=4 got=%d", new.nkeys())
+	}
+
+	wantKeys := []string{"a", "c", "d", "f"}
+	wantVals := []string{"1", "2", "X", "3"}
+
+	for i := range 4 {
+		if string(new.getKey(uint16(i))) != wantKeys[i] {
+			t.Fatalf("key[%d] want=%q got=%q", i, wantKeys[i], string(new.getKey(uint16(i))))
+		}
+
+		if string(new.getVal(uint16(i))) != wantVals[i] {
+			t.Fatalf("val[%d] want=%q got=%q", i, wantVals[i], string(new.getVal(uint16(i))))
+		}
+
+	}
+}
