@@ -294,9 +294,7 @@ func leafInsert(old BNode, idx uint16, key []byte, val []byte) BNode {
 // [a] [c] [f]
 
 // Lalu kita update "c" jadi value baru "99".
-
 // Maka:
-
 // copy kiri: [a]
 // tulis baru di posisi 1: [c -> 99]
 // copy kanan: [f]
@@ -319,4 +317,38 @@ func leafUpdate(old BNode, idx uint16, key, value []byte) BNode {
 		nodeAppendRange(new, old, idx+1, idx+1, old.nkeys()-(idx+1))
 	}
 	return new
+}
+
+func leafUpsert(old BNode, key []byte, val []byte) BNode {
+	assert(old.nkeys() > 0, "leafUpsert: empty node not supported yet")
+
+	// mencari key terbesar yang masih <= target, atau posisi referensi terdekat
+	idx := nodeLookupLE(old, key)
+
+	// bandingkan dengan key di index itu
+	cmp := bytes.Compare(old.getKey(idx), key)
+
+	// exact match
+	// Kalau key sudah ada: jangan tambah node count, cukup ganti value
+	if cmp == 0 {
+		// key sudah ada -> update
+		return leafUpdate(old, idx, key, val)
+	}
+
+	// target lebih kecil dari key[idx]
+	// Ini kasus “insert di depan idx”.
+	// Contoh:
+	// node: [c] [f]
+	// target: "a"
+	// lookup bisa balik 0
+	// old.getKey(0) = "c"
+	// "c" > "a"
+	// berarti "a" harus masuk di index 0
+	if cmp > 0 {
+		// target < key[idx] -> insert sebelum idx
+		return leafInsert(old, idx, key, val)
+	}
+
+	// target > key[idx] -> insert sesudah idx
+	return leafInsert(old, idx+1, key, val)
 }

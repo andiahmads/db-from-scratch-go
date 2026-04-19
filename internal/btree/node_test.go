@@ -271,3 +271,129 @@ func TestLeafInsert(t *testing.T) {
 
 	}
 }
+
+func TestLeafUpdate(t *testing.T) {
+	old := NewBNode(BTREE_PAGE_SIZE)
+	old.setHeader(BNODE_LEAF, 3)
+
+	old.setPtr(0, 0)
+	old.setPtr(1, 0)
+	old.setPtr(2, 0)
+
+	nodeAppendKV(old, 0, 0, []byte("a"), []byte("1"))
+	nodeAppendKV(old, 1, 0, []byte("c"), []byte("2"))
+	nodeAppendKV(old, 2, 0, []byte("f"), []byte("3"))
+
+	new := leafUpdate(old, 1, []byte("c"), []byte("99"))
+
+	if new.nkeys() != 3 {
+		t.Fatalf("expected nkeys=3 got=%d", new.nkeys())
+	}
+
+	wantKeys := []string{"a", "c", "f"}
+	wantVals := []string{"1", "99", "3"}
+
+	for i := 0; i < 3; i++ {
+		if string(new.getKey(uint16(i))) != wantKeys[i] {
+			t.Fatalf("key[%d] want=%q got=%q", i, wantKeys[i], string(new.getKey(uint16(i))))
+		}
+
+		if string(new.getVal(uint16(i))) != wantVals[i] {
+			t.Fatalf("val[%d] want=%q got=%q", i, wantVals[i], string(new.getVal(uint16(i))))
+		}
+	}
+}
+
+func TestLeafUpsertMiddle(t *testing.T) {
+	old := NewBNode(BTREE_PAGE_SIZE)
+	old.setHeader(BNODE_LEAF, 3)
+
+	old.setPtr(0, 0)
+	old.setPtr(1, 0)
+	old.setPtr(2, 0)
+
+	nodeAppendKV(old, 0, 0, []byte("a"), []byte("1"))
+	nodeAppendKV(old, 1, 0, []byte("c"), []byte("2"))
+	nodeAppendKV(old, 2, 0, []byte("f"), []byte("3"))
+
+	new := leafUpsert(old, []byte("d"), []byte("X"))
+
+	wantKeys := []string{"a", "c", "d", "f"}
+	wantVals := []string{"1", "2", "X", "3"}
+
+	if new.nkeys() != 4 {
+		t.Fatalf("expected nkeys=4 got=%d", new.nkeys())
+	}
+
+	for i := 0; i < 4; i++ {
+		if string(new.getKey(uint16(i))) != wantKeys[i] {
+			t.Fatalf("key[%d] want=%q got=%q", i, wantKeys[i], string(new.getKey(uint16(i))))
+		}
+
+		if string(new.getVal(uint16(i))) != wantVals[i] {
+			t.Fatalf("val[%d] want=%q got=%q", i, wantVals[i], string(new.getVal(uint16(i))))
+		}
+
+	}
+
+}
+
+func TestLeafUpsertInsertFront(t *testing.T) {
+	old := NewBNode(BTREE_PAGE_SIZE)
+	old.setHeader(BNODE_LEAF, 2)
+
+	old.setPtr(0, 0)
+	old.setPtr(1, 0)
+
+	nodeAppendKV(old, 0, 0, []byte("c"), []byte("2"))
+	nodeAppendKV(old, 1, 0, []byte("f"), []byte("3"))
+
+	new := leafUpsert(old, []byte("a"), []byte("1"))
+
+	wantKeys := []string{"a", "c", "f"}
+	wantVals := []string{"1", "2", "3"}
+
+	if new.nkeys() != 3 {
+		t.Fatalf("expected nkeys=3 got=%d", new.nkeys())
+	}
+
+	for i := 0; i < 3; i++ {
+		if string(new.getKey(uint16(i))) != wantKeys[i] {
+			t.Fatalf("key[%d] want=%q got=%q", i, wantKeys[i], string(new.getKey(uint16(i))))
+		}
+		if string(new.getVal(uint16(i))) != wantVals[i] {
+			t.Fatalf("val[%d] want=%q got=%q", i, wantVals[i], string(new.getVal(uint16(i))))
+		}
+	}
+}
+
+func TestLeafUpsertUpdateExisting(t *testing.T) {
+	old := NewBNode(BTREE_PAGE_SIZE)
+	old.setHeader(BNODE_LEAF, 3)
+
+	old.setPtr(0, 0)
+	old.setPtr(1, 0)
+	old.setPtr(2, 0)
+
+	nodeAppendKV(old, 0, 0, []byte("a"), []byte("1"))
+	nodeAppendKV(old, 1, 0, []byte("c"), []byte("2"))
+	nodeAppendKV(old, 2, 0, []byte("f"), []byte("3"))
+
+	new := leafUpsert(old, []byte("c"), []byte("22"))
+
+	wantKeys := []string{"a", "c", "f"}
+	wantVals := []string{"1", "22", "3"}
+
+	if new.nkeys() != 3 {
+		t.Fatalf("expected nkeys=3 got=%d", new.nkeys())
+	}
+
+	for i := 0; i < 3; i++ {
+		if string(new.getKey(uint16(i))) != wantKeys[i] {
+			t.Fatalf("key[%d] want=%q got=%q", i, wantKeys[i], string(new.getKey(uint16(i))))
+		}
+		if string(new.getVal(uint16(i))) != wantVals[i] {
+			t.Fatalf("val[%d] want=%q got=%q", i, wantVals[i], string(new.getVal(uint16(i))))
+		}
+	}
+}
